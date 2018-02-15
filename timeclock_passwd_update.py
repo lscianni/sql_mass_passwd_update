@@ -4,75 +4,98 @@
 # 2018-02-13
 
 """
-Test timeclock passwd updating utility
+Test timeclock passwd updating script
 """
 
-import MySQLdb as mdb
-from sys import argv
+import csv, MySQLdb as mdb
+from sys import argv, getsizeof
+from os import path
 from getpass import getpass
 from bcrypt import hashpw, gensalt
+
+def help_info():
+    return 'Usage: %s host username database file\n \
+            \nUpdates user timeclock passwords from a csv file\n \
+            the csv file must be in the following format\n \
+            \n \
+            SamAccountName,Password\n \
+            username,newpassword\n \
+            ......\n \
+            \nex. timeclock_password_update.py sql.example.com dbadmin timelcock_db \
+            newpasswords.csv\n' % argv[0]
     
-def connect_db():
-    server = '192.173.1.11'
-    username = 'lscianni'
-    print('MySQL password')
-    passwd = getpass()
-    database = 'test_timeclock_passwd'
-    
-    connect_db.con = mdb.connect(server, username, passwd, database)
+
     
 def main():        
     table = 'atrusers'
-    try:
-        user_name = argv[1]
-    except IndexError:
-        print('Pass a user name')
-        exit()
-        
-    def get_pass():                                # Securely get the password from the user
+    main.logfile = 'timeclockpasswdupdate.log'
+    
+    def connect_db():
         try:
-            print('Enter atr user password')
-            get_pass.passwd = getpass()
-            print('Verify atr user password')
-            verify_pass = getpass()
+            server = argv[1]#'192.173.1.11'
+            username = argv[2]#'lscianni'
+            print('MySQL password')
+            passwd = getpass()
+            database = argv[3]#'test_timeclock_passwd'
+
+        except IndexError:
+            help_info()
+
+        try:
+            connect_db.conn = mdb.connect(server, username, passwd, database)
+        except mdb.Error as e:
+            with open(main.logfile, 'w') as logfile:
+               logfile.write('SQL Connection Error: %s\n' % e)
+    
+        def get_pass():
+            try:
+                csv_file = argv[4]
+            except IndexError:
+                help_info()
+            pw_col = 'password'
+            email_col = 'emailaddress'
+
+            if path.exists(csv_file) == False:
+                print('File Not Found (did you use the full path?)\n')
+                exit()
             
-            if verify_pass == get_pass.passwd:
-                get_pass.passwd == True
-            else:
-                get_pass.passwd == False
-                raise ValueError('Passwords do not match')
+            email_suffix = 'appliedtechres.com'
             
-            if get_pass.passwd == True:
-                return get_passwd.passwd
-        except ValueError as e:
-            print(e)
-            exit()
+            with open(csv_file, 'r') as csv_file:
+                csv_reader = csv.DictReader(csv_file)
+                for row in csv_reader:
+                    get_pass.user_name = row['SamAccountName'] 
+                    get_pass.passwd = bytes(row['Password'].encode('utf-8'))
+                    print('hashing %s\'s password' % get_pass.user_name)
+                    
+                    #hashed = hashpw(get_pass.passwd.encode('utf-8'), gensalt(10))
+                    get_pass.hashed = str(hashpw(get_pass.passwd, gensalt(10)), 'utf-8')
+
+                    get_pass.email = '%s@%s' %(get_pass.user_name, email_suffix)
+                    get_pass.hashstring = get_pass.hashed[1:]
+                    with open(main.logfile, 'a') as logfile:
+                        logfile.write('%s,%s\n' % (get_pass.email, get_pass.hashstring))
+
+                    sql = 'UPDATE %s SET %s = "%s" WHERE %s = "%s"' % (table, pw_col, get_pass.hashed, email_col, get_pass.email)
+                    
+                    try:    
+                        cur = connect_db.conn.cursor()
+                        cur.execute(sql)
+                        connect_db.conn.commit()
+                        cur.close()
+                        with open(main.logfile, 'a') as logfile:
+                            logfile.write('success\n')
+                        with open(main.logfile, 'a') as logfile:
+                            logfile.write('password for %s updated\n' % get_pass.user_name)
+                    except mdb.Error as e:
+                        with open(main.logfile, 'a') as logfile:
+                            logfile.write('MYSQL ERROR: %s\n' % e)
+                            print('SQL ERROR check %s' % logfile)
+                            connect_db.conn.rollback()
         
-    get_pass()
-    
-    hashed = hashpw(get_pass.passwd.encode('utf-8'), gensalt(10))
-    hashstring = str(hashed)
-    hashstring = hashstring[1:]
-    print(hashstring)
-    
-    
+        get_pass()
+           
     connect_db()
-    try:
-        pw_col = 'password'
-        email_col = 'emailaddress'
-        sql = 'UPDATE %s SET %s = "%s" WHERE %s = "%s"' % (table, pw_col, hash, email_col, user_name) 
-        cur = connect_db.con.cursor()
-        cur.execute(sql)
-        connect_db.con.commit()
-        connect_db.con.close()
-        print('password for %s updated\n' % user_name)
-        
-    except mdb.Error as e:
-        print(e)
-        connect_db.con.rollback()
-        connect_db.con.close()
-    
-    
     
 
 if __name__ == '__main__':
