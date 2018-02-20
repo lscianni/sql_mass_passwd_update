@@ -35,11 +35,11 @@ def main():
     def get_args():
         # Get arguments form commandline
         try:
-            get_args.server = argv[1]#'192.173.1.11'
-            get_args.username = argv[2]#'lscianni'
+            get_args.server = argv[1]
+            get_args.username = argv[2]
             print('MySQL password')
             get_args.passwd = getpass()
-            get_args.database = argv[3]#'test_timeclock_passwd'
+            get_args.database = argv[3]
             get_args.csv_file = argv[4]
 
         except IndexError:
@@ -51,6 +51,10 @@ def main():
 
         try:
             connect_db.conn = mdb.connect(get_args.server, get_args.username, get_args.passwd, get_args.database)
+
+        except AttributeError:
+            help_info()
+             
         except mdb.Error as e:
             with open(main.logfile, 'w') as logfile: # write to log; maybe make this a function
                logfile.write('SQL Connection Error: %s\n' % e)
@@ -63,52 +67,51 @@ def main():
 
             if path.exists(get_args.csv_file) == False:
                 print('File Not Found (did you use the full path?)\n')
-                exit()
+                help_info()
             
-            email_suffix = 'appliedtechres.com'
+            else:
+                email_suffix = 'appliedtechres.com'
             
-            with open(get_args.csv_file, 'r') as csv_file:
-                csv_reader = csv.DictReader(csv_file)
-                for row in csv_reader:
-                    get_pass.user_name = row['SamAccountName'] 
-                    get_pass.passwd = row['Password'].encode('utf-8')
-                    print('hashing %s\'s password' % get_pass.user_name)
-                    salt = gensalt(10, prefix=b"2a")
-                    get_pass.hashed = hashpw(get_pass.passwd, salt)
-                    # check if the hash is valid
-                    if hashpw(get_pass.passwd, get_pass.hashed) != get_pass.hashed:
-                        print('Hash mix-match')
-                        with open(main.logfile, 'a') as logfile:
-                            logfile.write('Hash:%s did not match')
-                    else:
-                        pass
-                    # convert the hash form binary to a string    
-                    get_pass.hashed = str(get_pass.hashed)
+                with open(get_args.csv_file, 'r') as csv_file:
+                    csv_reader = csv.DictReader(csv_file)
+                    for row in csv_reader:
+                        get_pass.user_name = row['SamAccountName'] 
+                        get_pass.passwd = row['Password'].encode('utf-8')
+                        print('hashing %s\'s password' % get_pass.user_name)
+                        salt = gensalt(10, prefix=b"2a")
+                        get_pass.hashed = hashpw(get_pass.passwd, salt)
+                        # check if the hash is valid
+                        if hashpw(get_pass.passwd, get_pass.hashed) != get_pass.hashed:
+                            print('Hash mix-match')
+                            with open(main.logfile, 'a') as logfile:
+                                logfile.write('Hash:%s did not match')
+                        else:
+                            # convert the hash form binary to a string    
+                            get_pass.hashed = str(get_pass.hashed)[1:]
 
-                    get_pass.email = '%s@%s' %(get_pass.user_name, email_suffix)
-                    #get_pass.hashstring = get_pass.hashed[1:]
-                    with open(main.logfile, 'a') as logfile:
-                        logfile.write('%s,%s\n' % (get_pass.email, get_pass.hashed))
-                    # sql update statement
-                    sql = 'UPDATE %s SET %s = "%s" WHERE %s = "%s"' % (table, pw_col, get_pass.hashed, email_col, get_pass.email)
+                            get_pass.email = '%s@%s' %(get_pass.user_name, email_suffix)
+                            #get_pass.hashstring = get_pass.hashed[1:]
+                            with open(main.logfile, 'a') as logfile:
+                                logfile.write('%s,%s\n' % (get_pass.email, get_pass.hashed))
+                            # sql update statement
+                            sql = 'UPDATE %s SET %s = "%s" WHERE %s = "%s"' % (table, pw_col, get_pass.hashed, email_col, get_pass.email)
                     
-                    try:    
-                        cur = connect_db.conn.cursor()
-                        cur.execute(sql)                  # execute sql
-                        connect_db.conn.commit()
-                        cur.close()
-                        with open(main.logfile, 'a') as logfile:
-                            logfile.write('success\n')
-                        with open(main.logfile, 'a') as logfile:
-                            logfile.write('password for %s updated\r\n\n' % get_pass.user_name)
-                    except mdb.Error as e:
-                        with open(main.logfile, 'a') as logfile:
-                            logfile.write('MYSQL ERROR: %s\n' % e)
-                            print('SQL ERROR check %s' % logfile)
-                            connect_db.conn.rollback() # rollback if there is an error
+                            try:    
+                                cur = connect_db.conn.cursor()
+                                cur.execute(sql)                  # execute sql
+                                connect_db.conn.commit()
+                                cur.close()
+                                with open(main.logfile, 'a') as logfile:
+                                    logfile.write('success\n')
+                                with open(main.logfile, 'a') as logfile:
+                                    logfile.write('password for %s updated\r\n\n' % get_pass.user_name)
+                            except mdb.Error as e:
+                                with open(main.logfile, 'a') as logfile:
+                                    logfile.write('MYSQL ERROR: %s\n' % e)
+                                    print('SQL ERROR check %s' % logfile)
+                                    connect_db.conn.rollback() # rollback if there is an error
         
         get_pass()
-           
     connect_db()
     
 if __name__ == '__main__':
