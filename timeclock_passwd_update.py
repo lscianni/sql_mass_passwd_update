@@ -15,10 +15,11 @@ import csv, MySQLdb as mdb
 from sys import argv, getsizeof
 from os import path
 from getpass import getpass
-from bcrypt import hashpw, gensalt
+from bcrypt import hashpw, gensalt, checkpw
+from datetime import datetime
     
 def main():        
-    table = 'atrusers' # change this to the real table name
+    table = 'member' # change this to the real table name
     main.logfile = 'timeclockpasswdupdate.log'
     
     def help_info():
@@ -76,26 +77,26 @@ def main():
                     csv_reader = csv.DictReader(csv_file)
                     for row in csv_reader:
                         get_pass.user_name = row['SamAccountName'] 
-                        get_pass.passwd = row['Password'].encode('utf-8')
-                        print('hashing %s\'s password' % get_pass.user_name)
+                        get_pass.passwd = row['Password']
+                        print('hashing %s\'s password on %s\n' % (get_pass.user_name, datetime.now()))
                         salt = gensalt(10, prefix=b"2a")
-                        get_pass.hashed = hashpw(get_pass.passwd, salt)
+                        get_pass.hashed = hashpw(get_pass.passwd.encode('ascii'), salt)
                         # check if the hash is valid
-                        if hashpw(get_pass.passwd, get_pass.hashed) != get_pass.hashed:
-                            print('Hash mix-match')
+                        if checkpw(get_pass.passwd.encode('utf-8'), get_pass.hashed) == False:
+                            print('Hash validation failed')
                             with open(main.logfile, 'a') as logfile:
-                                logfile.write('Hash:%s did not match')
+                                logfile.write('Hash did not match')
                         else:
-                            # convert the hash form binary to a string    
-                            get_pass.hashed = str(get_pass.hashed)[1:]
-
+                            # convert the hash from binary to a string    
+                            #get_pass.hashed_string = str(get_pass.hashed)[1:]
+                  
                             get_pass.email = '%s@%s' %(get_pass.user_name, email_suffix)
                             #get_pass.hashstring = get_pass.hashed[1:]
                             with open(main.logfile, 'a') as logfile:
-                                logfile.write('%s,%s\n' % (get_pass.email, get_pass.hashed))
+                                logfile.write('%s\n%s,%s\n' % (datetime.now(), get_pass.email, get_pass.hashed))
                             # sql update statement
-                            sql = 'UPDATE %s SET %s = "%s" WHERE %s = "%s"' % (table, pw_col, get_pass.hashed, email_col, get_pass.email)
-                    
+                            sql = 'UPDATE %s SET %s = "%s" WHERE %s = "%s"' % (table, pw_col, get_pass.hashed.decode('ascii'), email_col, get_pass.email)
+                            
                             try:    
                                 cur = connect_db.conn.cursor()
                                 cur.execute(sql)                  # execute sql
@@ -104,7 +105,7 @@ def main():
                                 with open(main.logfile, 'a') as logfile:
                                     logfile.write('success\n')
                                 with open(main.logfile, 'a') as logfile:
-                                    logfile.write('password for %s updated\r\n\n' % get_pass.user_name)
+                                    logfile.write('password for %s updated\n' % get_pass.user_name)
                             except mdb.Error as e:
                                 with open(main.logfile, 'a') as logfile:
                                     logfile.write('MYSQL ERROR: %s\n' % e)
