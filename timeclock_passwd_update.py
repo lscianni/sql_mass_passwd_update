@@ -34,7 +34,7 @@ def main():
             newpasswords.csv\n' % argv[0]
     
     def get_args():
-        # Get arguments form commandline
+        # Get arguments form command line
         try:
             get_args.server = argv[1]
             get_args.username = argv[2]
@@ -80,18 +80,16 @@ def main():
                         get_pass.passwd = row['Password']
                         print('hashing %s\'s password on %s\n' % (get_pass.user_name, datetime.now()))
                         salt = gensalt(10, prefix=b"2a")
-                        get_pass.hashed = hashpw(get_pass.passwd.encode('ascii'), salt)
+                        get_pass.hashed = hashpw(get_pass.passwd.encode('utf-8'), salt)
                         # check if the hash is valid
                         if checkpw(get_pass.passwd.encode('utf-8'), get_pass.hashed) == False:
                             print('Hash validation failed')
                             with open(main.logfile, 'a') as logfile:
                                 logfile.write('Hash did not match')
                         else:
-                            # convert the hash from binary to a string    
-                            #get_pass.hashed_string = str(get_pass.hashed)[1:]
-                  
+                           
                             get_pass.email = '%s@%s' %(get_pass.user_name, email_suffix)
-                            #get_pass.hashstring = get_pass.hashed[1:]
+                            
                             with open(main.logfile, 'a') as logfile:
                                 logfile.write('%s\n%s,%s\n' % (datetime.now(), get_pass.email, get_pass.hashed))
                             # sql update statement
