@@ -1,11 +1,27 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
-# Louis Scianni
 # 2018-02-13
-# Released under the GPL-v2
-
 """
-Test timeclock passwd updating script
+------------------------------------------------------------------------------
+Copyright (C) <year>  <name of author>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+lscianniit@gmail.com
+------------------------------------------------------------------------------
+mysql passwd updating script
 
 Updates the timeclock passwords stored in mysql as bcrypt hashes.
 Reads usernames and passwords from a csv file.
