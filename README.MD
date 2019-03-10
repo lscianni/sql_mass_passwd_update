@@ -1,4 +1,4 @@
-# time_clock_pass_update
+# sql_mass_pass_update
 
 Reads new passwords from a csv file, hashes the password using bcrypt and updates the corresponding users password in a database.
 
